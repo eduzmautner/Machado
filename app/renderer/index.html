@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
+  <title>Machado</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- The native macOS menu bar replaces the prototype's HTML menu bar -->
+
+  <div class="tabstrip" id="tabstrip">
+    <div class="tabs" id="tabs" role="tablist"></div>
+    <button class="tab-add" id="tab-add" title="New tab (⌘T)" aria-label="New tab">+</button>
+  </div>
+
+  <main class="editor" id="editor"></main>
+
+  <!-- Find bar -->
+  <div class="floatbar findbar" id="findbar" hidden>
+    <input type="text" id="find-input" placeholder="Find" spellcheck="false" autocomplete="off">
+    <span class="find-count" id="find-count"></span>
+    <button class="bar-btn" id="find-prev" title="Previous (⇧↩)">‹</button>
+    <button class="bar-btn" id="find-next" title="Next (↩)">›</button>
+    <button class="bar-btn bar-close" id="find-close" title="Done (esc)">✕</button>
+  </div>
+
+  <!-- Go to line bar -->
+  <div class="floatbar gotobar" id="gotobar" hidden>
+    <label for="goto-input">Go to line</label>
+    <input type="number" id="goto-input" min="1" spellcheck="false" autocomplete="off">
+    <button class="bar-btn bar-close" id="goto-close" title="Done (esc)">✕</button>
+  </div>
+
+  <footer class="statusbar">
+    <span id="status-pos">Ln 1</span>
+    <span class="status-right">
+      <span id="status-zoom" hidden></span>
+      <span id="status-words">0 words</span>
+      <span id="status-count">0 characters</span>
+    </span>
+  </footer>
+
+  <!-- Print target: filled with the active document at print time -->
+  <div id="print-root" aria-hidden="true"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

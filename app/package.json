@@ -1,0 +1,35 @@
+{
+  "name": "machado",
+  "productName": "Machado",
+  "version": "1.0.0",
+  "description": "A calm, distraction-free writing app with tabs, named after Machado de Assis",
+  "main": "main.js",
+  "author": "Eduardo Mautner",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --mac"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.eduardomautner.machado",
+    "productName": "Machado",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*"
+    ],
+    "mac": {
+      "target": ["dmg", "zip"],
+      "icon": "build/icon.icns",
+      "category": "public.app-category.productivity",
+      "identity": null
+    }
+  }
+}

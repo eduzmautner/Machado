@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body>
+<canvas id="c" width="1024" height="1024"></canvas>
+<script>
+  // Machado icon: the user's own full-bleed artwork (app/MachadoAppIcon.png)
+  // masked into the macOS squircle with standard margins and a soft shadow.
+  async function drawIcon() {
+    const c = document.getElementById('c');
+    const ctx = c.getContext('2d');
+
+    const img = new Image();
+    img.src = '../MachadoAppIcon.png';
+    await img.decode();
+
+    // macOS icon grid: 824px rounded rect centered in 1024, radius ~185
+    const S = 1024, R = 185, M = (S - 824) / 2, W = 824;
+
+    const rr = (x, y, w, h, r) => {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+    };
+
+    // soft drop shadow behind the squircle
+    ctx.save();
+    ctx.shadowColor = 'rgba(30,30,28,0.35)';
+    ctx.shadowBlur = 36;
+    ctx.shadowOffsetY = 18;
+    ctx.fillStyle = '#F8F8F6';
+    rr(M, M, W, W, R);
+    ctx.fill();
+    ctx.restore();
+
+    // clip to the squircle and draw the artwork scaled to fill it
+    ctx.save();
+    rr(M, M, W, W, R);
+    ctx.clip();
+    ctx.drawImage(img, M, M, W, W);
+    ctx.restore();
+
+    return c.toDataURL('image/png');
+  }
+</script>
+</body>
+</html>

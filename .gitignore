@@ -1,0 +1,11 @@
+# dependencies & build output
+node_modules/
+app/dist/
+app/build/icon.iconset/
+
+# WIP landing page — not published yet
+site/
+
+# local tooling & OS noise
+.claude/
+.DS_Store
