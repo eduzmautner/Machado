@@ -6,7 +6,14 @@ const path = require('path');
 
 const ROOT = path.join(__dirname, process.argv[2] || 'prototype');
 const PORT = parseInt(process.argv[3], 10) || 5173;
-const TYPES = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript' };
+const TYPES = {
+  '.html': 'text/html',
+  '.css': 'text/css',
+  '.js': 'text/javascript',
+  '.png': 'image/png',
+  '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon',
+};
 
 http
   .createServer((req, res) => {
