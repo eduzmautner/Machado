@@ -9,15 +9,41 @@
 
 const $ = (sel) => document.querySelector(sel);
 
+// Four faces ship with both macOS and Windows; the other three are
+// self-hosted (see @font-face in style.css) so the menu renders the
+// same typeface on every platform instead of silently falling back.
 const FONTS = [
   { name: 'Georgia',         stack: `Georgia, 'Times New Roman', serif` },
   { name: 'Times New Roman', stack: `'Times New Roman', Times, serif` },
   { name: 'Palatino',        stack: `Palatino, 'Palatino Linotype', 'Book Antiqua', 'URW Palladio L', serif` },
-  { name: 'Helvetica',       stack: `'Helvetica Neue', Helvetica, Arial, sans-serif` },
-  { name: 'Avenir',          stack: `'Avenir Next', Avenir, 'Century Gothic', sans-serif` },
+  { name: 'Inter',           stack: `Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif` },
+  { name: 'Work Sans',       stack: `'Work Sans', 'Avenir Next', Avenir, 'Segoe UI', sans-serif` },
   { name: 'Courier New',     stack: `'Courier New', Courier, monospace` },
-  { name: 'Iowan Old Style', stack: `'Iowan Old Style', Iowan, Georgia, serif` },
+  { name: 'Literata',        stack: `Literata, 'Iowan Old Style', Georgia, serif` },
 ];
+
+// Renamed faces map to their replacements so a saved preference survives
+const FONT_ALIASES = {
+  Helvetica: 'Inter',
+  Avenir: 'Work Sans',
+  'Iowan Old Style': 'Literata',
+};
+
+const IS_MAC = /mac/i.test(
+  navigator.userAgentData?.platform || navigator.platform || navigator.userAgent
+);
+
+// Menu shortcuts are authored once in Mac notation (⇧⌘S) and rendered as
+// Ctrl+Shift+S on Windows and Linux. Key handling already accepts either
+// modifier, so only the label needs translating.
+function shortcutLabel(key) {
+  if (!key || IS_MAC) return key;
+  const mods = [];
+  if (key.includes('⌘') || key.includes('⌃')) mods.push('Ctrl');
+  if (key.includes('⌥')) mods.push('Alt');
+  if (key.includes('⇧')) mods.push('Shift');
+  return mods.concat(key.replace(/[⌘⇧⌥⌃]/g, '').replace('−', '-')).join('+');
+}
 
 const DEFAULT_FONT = 'Georgia';
 const BASE_FONT_PX = 17;
@@ -678,7 +704,8 @@ function currentFontStack() {
 }
 
 function setFont(name) {
-  state.font = FONTS.some((f) => f.name === name) ? name : DEFAULT_FONT;
+  const resolved = FONT_ALIASES[name] || name;
+  state.font = FONTS.some((f) => f.name === resolved) ? resolved : DEFAULT_FONT;
   $('#editor').style.fontFamily = currentFontStack();
   renderMenus();
   scheduleSessionSave();
@@ -948,7 +975,7 @@ function renderMenus() {
         li.appendChild(sub);
       } else {
         li.innerHTML = `<span><span class="check">${item.checked ? '✓' : ''}</span>${item.label}</span>` +
-          (item.key ? `<span class="shortcut">${item.key}</span>` : '');
+          (item.key ? `<span class="shortcut">${shortcutLabel(item.key)}</span>` : '');
         li.addEventListener('click', () => {
           closeAllMenus();
           doCommand(item.cmd, item.arg);
