@@ -130,7 +130,21 @@ $('#sign-out').addEventListener('click', async () => {
   location.replace(Backend.pageUrl('login.html'));
 });
 
+// theme-boot.js already painted the last known theme. Confirm it against
+// the account, in case it changed on another device.
+async function reconcileTheme() {
+  try {
+    const prefs = await Backend.loadPreferences();
+    const theme =
+      prefs?.theme ||
+      (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem('machado-theme', theme);
+  } catch { /* keep whatever theme-boot chose */ }
+}
+
 (async () => {
   if (!(await Backend.requireAuth())) return;
+  reconcileTheme();
   load();
 })();

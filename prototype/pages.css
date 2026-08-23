@@ -203,10 +203,39 @@ body {
   text-decoration: none;
 }
 
+/* Quieter here than on the sign-in page — the entries are the subject. */
+.topbar .wordmark { height: 21px; }
+
 .topbar-actions {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+/* The library's one call to action: start writing. */
+.btn-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--paper);
+  background: var(--ink);
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  padding: 7px 15px;
+  cursor: pointer;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.btn-cta:hover { opacity: 0.88; }
+.btn-cta:active { transform: scale(0.98); }
+
+.btn-plus {
+  font-size: 15px;
+  line-height: 1;
+  opacity: 0.75;
 }
 
 .btn-quiet {
@@ -229,11 +258,13 @@ body {
   padding: 44px 24px 80px;
 }
 
+/* Sans for the page's own furniture; the serif is reserved for your
+   writing, so entry titles below stay in Literata. */
 .library-heading {
-  font-family: Literata, Georgia, serif;
-  font-size: 27px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-family: var(--ui-font);
+  font-size: 26px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
 }
 
 .library-count {
@@ -376,6 +407,7 @@ a:focus-visible {
 @media (max-width: 600px) {
   .topbar { padding: 14px 16px; }
   .wordmark { height: 21px; }
+  .topbar .wordmark { height: 18px; }
   .library { padding: 30px 16px 60px; }
   .library-heading { font-size: 23px; }
   .entry-delete { opacity: 1; }

@@ -614,6 +614,9 @@ function setAlign(name) {
 function setTheme(name) {
   state.theme = name === 'dark' ? 'dark' : 'light';
   document.documentElement.dataset.theme = state.theme;
+  // Mirrored locally so every page can paint correctly before the
+  // preferences round trip finishes (see theme-boot.js).
+  try { localStorage.setItem('machado-theme', state.theme); } catch { /* ignore */ }
   renderMenus();
   schedulePrefsSave();
 }
@@ -894,7 +897,7 @@ function menuDefinition() {
       label: 'File',
       items: [
         { label: 'New Entry', cmd: 'newTab', key: '⌘T' },
-        { label: 'All Entries…', cmd: 'library', key: '⌘O' },
+        { label: 'Library', cmd: 'library', key: '⌘O' },
         { sep: true },
         {
           label: 'Export',
