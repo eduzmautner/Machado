@@ -783,12 +783,16 @@ document.addEventListener('visibilitychange', () => {
    machine, so lift it into the account once and leave a marker so it is
    never imported twice.                                              */
 
+// v2 superseded v1 but never deleted it, so both keys can hold the same
+// writing. Read the newest one that has anything in it, never both.
 const LEGACY_KEYS = ['writers-notepad-session-v2', 'writers-notepad-session-v1'];
 const IMPORTED_FLAG = 'machado-imported-local-v1';
 
 function readLegacyDrafts() {
   const drafts = [];
+  const seen = new Set();
   for (const key of LEGACY_KEYS) {
+    if (drafts.length) break;              // a newer key already supplied them
     let data;
     try {
       data = JSON.parse(localStorage.getItem(key));
@@ -800,7 +804,10 @@ function readLegacyDrafts() {
     for (const t of data.tabs) {
       const raw = t.content || '';
       const html = isPlainText ? textToHtml(raw) : raw;
-      if (!Backend.plainText(html)) continue;   // skip empty drafts
+      const text = Backend.plainText(html);
+      if (!text) continue;                     // skip empty drafts
+      if (seen.has(text)) continue;            // the same draft in two tabs
+      seen.add(text);
       drafts.push(html);
     }
   }
