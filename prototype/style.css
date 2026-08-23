@@ -1,147 +1,7 @@
 /* ------------------------------------------------------------------
-   Self-hosted writing faces (SIL Open Font License 1.1 — see fonts/OFL.txt).
-   These replace the three Mac-only fonts so every typeface in the menu
-   renders identically on macOS, Windows and Linux. Variable weight
-   400-700 covers regular and bold; true italics included.
-   Browsers fetch these only when the face is actually used.
+   Machado — the editor. Palette, fonts and reset live in theme.css,
+   which every page loads first.
 ------------------------------------------------------------------- */
-
-@font-face {
-  font-family: 'Literata';
-  font-style: normal;
-  font-weight: 400 700;
-  font-display: swap;
-  src: url('fonts/literata-normal-latin.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-@font-face {
-  font-family: 'Literata';
-  font-style: normal;
-  font-weight: 400 700;
-  font-display: swap;
-  src: url('fonts/literata-normal-latin-ext.woff2') format('woff2');
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
-@font-face {
-  font-family: 'Literata';
-  font-style: italic;
-  font-weight: 400 700;
-  font-display: swap;
-  src: url('fonts/literata-italic-latin.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-@font-face {
-  font-family: 'Literata';
-  font-style: italic;
-  font-weight: 400 700;
-  font-display: swap;
-  src: url('fonts/literata-italic-latin-ext.woff2') format('woff2');
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
-@font-face {
-  font-family: 'Inter';
-  font-style: normal;
-  font-weight: 400 700;
-  font-display: swap;
-  src: url('fonts/inter-normal-latin.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-@font-face {
-  font-family: 'Inter';
-  font-style: normal;
-  font-weight: 400 700;
-  font-display: swap;
-  src: url('fonts/inter-normal-latin-ext.woff2') format('woff2');
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
-@font-face {
-  font-family: 'Inter';
-  font-style: italic;
-  font-weight: 400 700;
-  font-display: swap;
-  src: url('fonts/inter-italic-latin.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-@font-face {
-  font-family: 'Inter';
-  font-style: italic;
-  font-weight: 400 700;
-  font-display: swap;
-  src: url('fonts/inter-italic-latin-ext.woff2') format('woff2');
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
-@font-face {
-  font-family: 'Work Sans';
-  font-style: normal;
-  font-weight: 400 700;
-  font-display: swap;
-  src: url('fonts/worksans-normal-latin.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-@font-face {
-  font-family: 'Work Sans';
-  font-style: normal;
-  font-weight: 400 700;
-  font-display: swap;
-  src: url('fonts/worksans-normal-latin-ext.woff2') format('woff2');
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
-@font-face {
-  font-family: 'Work Sans';
-  font-style: italic;
-  font-weight: 400 700;
-  font-display: swap;
-  src: url('fonts/worksans-italic-latin.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-@font-face {
-  font-family: 'Work Sans';
-  font-style: italic;
-  font-weight: 400 700;
-  font-display: swap;
-  src: url('fonts/worksans-italic-latin-ext.woff2') format('woff2');
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
-
-/* ------------------------------------------------------------------
-   Writer's Notepad — prototype stylesheet
-   Palette: warm ivory paper, warm ink, one accent (wet-ink blue).
-------------------------------------------------------------------- */
-
-:root {
-  color-scheme: light;
-  --paper:     #F9F8F6;
-  --chrome:    #F4F3F1;
-  --chrome-2:  #E9E8E5;   /* pressed / hovered chrome */
-  --ink:       #2A2520;
-  --muted:     #8C8B88;
-  --line:      #E4E3E0;
-  --accent:    #43628C;   /* wet ink */
-  --find-hl:   #F3E5A8;
-  --find-cur:  #E9C96B;
-  --selection: #D9E2EF;
-
-  --ui-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
-  --editor-size: 17px;    /* scaled by zoom via JS */
-}
-
-/* Dark: same lightness values, zero saturation — plain grays.
-   Theme is set by JS (File > Theme); defaults to the system scheme. */
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  --paper:     #1E1E1E;
-  --chrome:    #171717;
-  --chrome-2:  #222222;
-  --ink:       #DBDBDB;
-  --muted:     #7B7B7B;
-  --line:      #2E2E2E;
-  --accent:    #A1A1A1;
-  --find-hl:   #3A3A3A;
-  --find-cur:  #555555;
-  --selection: #454545;
-}
-
-* { margin: 0; padding: 0; box-sizing: border-box; }
 
 html, body {
   height: 100%;
@@ -598,3 +458,15 @@ input:focus-visible {
     max-width: 31em;
   }
 }
+
+/* Hide the editor until the session check and first load resolve, so a
+   signed-out visitor never sees a flash of someone else's workspace. */
+body.booting .tabstrip,
+body.booting .editor,
+body.booting .statusbar,
+body.booting .menubar { visibility: hidden; }
+
+/* Sync state sits quietly beside the counts */
+#status-sync[hidden] { display: none; }
+#status-sync.is-offline { color: #A9762F; }
+:root[data-theme="dark"] #status-sync.is-offline { color: #C9A05E; }

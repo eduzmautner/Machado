@@ -4,20 +4,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="light dark">
-  <title>Untitled</title>
+  <title>Machado</title>
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="stylesheet" href="theme.css">
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="booting">
 
-  <!-- Prototype-only menu bar: replaced 1:1 by the native macOS menu bar in Phase 2 -->
-  <header id="menubar" class="menubar" aria-label="Menu bar (prototype)"></header>
+  <header id="menubar" class="menubar" aria-label="Menu bar"></header>
 
   <div class="tabstrip" id="tabstrip">
     <div class="tabs" id="tabs" role="tablist"></div>
-    <button class="tab-add" id="tab-add" title="New tab (⌘T)" aria-label="New tab">+</button>
+    <button class="tab-add" id="tab-add" title="New entry (⌘T)" aria-label="New entry">+</button>
   </div>
 
   <main class="editor" id="editor"></main>
@@ -41,6 +41,7 @@
   <footer class="statusbar">
     <span id="status-pos">Ln 1</span>
     <span class="status-right">
+      <span id="status-sync" hidden></span>
       <span id="status-zoom" hidden></span>
       <span id="status-words">0 words</span>
       <span id="status-count">0 characters</span>
@@ -50,6 +51,8 @@
   <!-- Print target: filled with the active document at print time -->
   <div id="print-root" aria-hidden="true"></div>
 
+  <script src="vendor/supabase.js"></script>
+  <script src="backend.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

@@ -1,8 +1,8 @@
 /* ------------------------------------------------------------------
-   Writer's Notepad — prototype logic
-   Rich-text editor (contenteditable) with tabs. File open/save/print
-   go through `platform` so Phase 2 (Electron) swaps in IPC without
-   touching the rest.
+   Machado — the editor.
+   A rich-text surface with tabs, where each tab is a view onto one
+   document in your account. Edits autosave; backend.js does the
+   talking to the server.
 ------------------------------------------------------------------- */
 
 'use strict';
@@ -48,17 +48,14 @@ function shortcutLabel(key) {
 const DEFAULT_FONT = 'Georgia';
 const BASE_FONT_PX = 17;
 const ZOOM_MIN = 50, ZOOM_MAX = 200, ZOOM_STEP = 10;
-const SESSION_KEY = 'writers-notepad-session-v2';
-const LEGACY_SESSION_KEY = 'writers-notepad-session-v1';
-
-const formatFor = (name) => (/\.html?$/i.test(name || '') ? 'html' : 'txt');
 
 /* ---------------- Text <-> HTML helpers ---------------- */
 
 const escapeHtml = (s) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-// Plain text -> one <div> per line (the contenteditable line model)
+// Plain text -> one <div> per line (the contenteditable line model).
+// Used when importing local drafts written before accounts existed.
 function textToHtml(text) {
   return text
     .split('\n')
@@ -123,86 +120,25 @@ function sanitizeHtml(html) {
   return out(doc.body.childNodes);
 }
 
-/* ---------------- Platform adapter (browser flavor) ---------------- */
+/* ---------------- Output (export & print) ----------------
+   Documents live in the account now, so there is nothing to "save to
+   disk" — Export hands you a copy to keep. */
 
-const FILE_TYPES_OPEN = [
-  {
-    description: 'Documents',
-    accept: { 'text/plain': ['.txt', '.md', '.text'], 'text/html': ['.html', '.htm'] },
-  },
-];
+function download(name, content, mime) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([content], { type: mime }));
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
 
-const platform = {
-  supportsFilePicker: 'showOpenFilePicker' in window,
-
-  // -> { name, content, handle } | null (cancelled)
-  async openFile() {
-    if (this.supportsFilePicker) {
-      try {
-        const [handle] = await window.showOpenFilePicker({ types: FILE_TYPES_OPEN });
-        const file = await handle.getFile();
-        return { name: file.name, content: await file.text(), handle };
-      } catch (err) {
-        if (err.name === 'AbortError') return null;
-        throw err;
-      }
-    }
-    return new Promise((resolve) => {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = '.txt,.md,.text,.html,.htm,text/plain,text/html';
-      input.onchange = async () => {
-        const file = input.files[0];
-        if (!file) return resolve(null);
-        resolve({ name: file.name, content: await file.text(), handle: null });
-      };
-      input.oncancel = () => resolve(null);
-      input.click();
-    });
-  },
-
-  async saveFile(handle, content) {
-    const writable = await handle.createWritable();
-    await writable.write(content);
-    await writable.close();
-  },
-
-  // Ask where to save; the picker's format dropdown offers .txt and .html.
-  // Returns { name, handle } (handle null in the download fallback) | null.
-  async pickSaveFile(suggestedName, preferHtml) {
-    const txtType = { description: 'Plain Text', accept: { 'text/plain': ['.txt'] } };
-    const htmlType = { description: 'HTML (keeps formatting)', accept: { 'text/html': ['.html', '.htm'] } };
-    if (this.supportsFilePicker) {
-      try {
-        const handle = await window.showSaveFilePicker({
-          suggestedName,
-          types: preferHtml ? [htmlType, txtType] : [txtType, htmlType],
-        });
-        return { name: handle.name, handle };
-      } catch (err) {
-        if (err.name === 'AbortError') return null;
-        throw err;
-      }
-    }
-    return { name: suggestedName, handle: null }; // caller downloads a blob
-  },
-
-  download(name, content, mime) {
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([content], { type: mime }));
-    a.download = name;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  },
-
-  print(html, fontStack, align) {
-    const root = $('#print-root');
-    root.innerHTML = html;
-    root.style.fontFamily = fontStack;
-    root.style.textAlign = align;
-    window.print();
-  },
-};
+function printDocument(html, fontStack, align) {
+  const root = $("#print-root");
+  root.innerHTML = html;
+  root.style.fontFamily = fontStack;
+  root.style.textAlign = align;
+  window.print();
+}
 
 /* ---------------- State ---------------- */
 
@@ -213,25 +149,23 @@ const state = {
   zoom: 100,
   align: 'left',     // 'left' | 'right' | 'justify'
   theme: null,       // 'light' | 'dark'; resolved from system on first launch
-  untitledCounter: 1,
 };
 
 let tabIdCounter = 1;
 
 /* ---------------- Tabs ---------------- */
 
-function createTab({ title = null, fileName = null, content = '', savedContent = '', handle = null } = {}) {
+function createTab({ docId = null, title = null, content = '' } = {}) {
   const id = tabIdCounter++;
   const tab = {
     id,
-    fileName,                                        // basename of the backing file, if any
-    title: title || fileName || `Untitled ${state.untitledCounter === 1 ? '' : state.untitledCounter}`.trim(),
-    handle,                                          // FileSystemFileHandle (lost across reloads)
-    format: formatFor(fileName),                     // 'txt' | 'html' — how Save serializes
-    savedHtml: '',                                   // innerHTML as of last save; dirty = differs
+    docId,                    // row in `documents`; null until the first words
+    title: title || 'Untitled',
+    savedHtml: '',            // innerHTML as of the last confirmed save
+    saveTimer: null,
+    saving: false,
     el: null, editor: null,
   };
-  if (!fileName && !title) state.untitledCounter++;
 
   // Tab strip element
   const tabEl = document.createElement('div');
@@ -262,12 +196,12 @@ function createTab({ title = null, fileName = null, content = '', savedContent =
     </div>`;
   const editor = doc.querySelector('.doc-text');
   editor.innerHTML = content;
-  tab.savedHtml = savedContent === content ? editor.innerHTML : savedContent;
+  tab.savedHtml = editor.innerHTML;   // as loaded from the server
   editor.addEventListener('input', () => {
     updateTabChrome(tab);
     updateStatus();
     if (find.active) find.refresh();
-    scheduleSessionSave();
+    scheduleSave(tab);
   });
   ['keyup', 'click'].forEach((ev) => editor.addEventListener(ev, updateStatus));
 
@@ -368,26 +302,27 @@ function activateTab(id) {
   }
   if (find.active) find.refresh();
   updateStatus();
-  scheduleSessionSave();
+  rememberOpenTabs();
 }
 
 function activeTab() {
   return state.tabs.find((t) => t.id === state.activeId) || null;
 }
 
+// Closing a tab puts the document away; it stays in your library.
 function closeTab(id) {
   const idx = state.tabs.findIndex((t) => t.id === id);
   if (idx === -1) return;
   const [tab] = state.tabs.splice(idx, 1);
+  if (isDirty(tab)) saveTab(tab);
   tab.el.remove();
   tab.docEl.remove();
   if (state.tabs.length === 0) {
-    const fresh = createTab();
-    activateTab(fresh.id);
+    activateTab(createTab().id);
   } else if (state.activeId === id) {
     activateTab(state.tabs[Math.min(idx, state.tabs.length - 1)].id);
   } else {
-    scheduleSessionSave();
+    rememberOpenTabs();
   }
 }
 
@@ -406,18 +341,11 @@ function updateTabChrome(tab) {
   const dirty = isDirty(tab);
   tab.el.classList.toggle('dirty', dirty);
   tab.el.querySelector('.tab-title').textContent = tab.title;
-  tab.el.title = tab.fileName || tab.title;
+  tab.el.title = tab.title;
   if (tab.id === state.activeId) document.title = tab.title + (dirty ? ' •' : '');
 }
 
-// A tab that's empty, untouched, and not tied to a file — reuse it for Open
-function isBlankTab(tab) {
-  return tab && !tab.fileName && tab.editor.textContent === '' && tab.savedHtml === '';
-}
-
 /* ---------------- File commands ---------------- */
-
-const hasFormatting = (tab) => /<(b|i|u|s|strong|em|strike|del)\b/i.test(tab.editor.innerHTML);
 
 // Standalone HTML document written to disk for .html saves
 function htmlDoc(tab) {
@@ -436,69 +364,34 @@ ${tab.editor.innerHTML}
 `;
 }
 
-function serialize(tab) {
-  return tab.format === 'html' ? htmlDoc(tab) : plainTextOf(tab.editor);
-}
+const safeFileName = (title) =>
+  (title || "Untitled").replace(/[\\/:*?"<>|]+/g, " ").trim().slice(0, 60) || "Untitled";
 
-async function cmdOpen() {
-  const result = await platform.openFile();
-  if (!result) return;
-  let tab = activeTab();
-  if (!isBlankTab(tab)) tab = createTab();
-  tab.fileName = result.name;
-  tab.title = result.name;
-  tab.handle = result.handle;
-  tab.format = formatFor(result.name);
-  if (tab.format === 'html') {
-    const doc = new DOMParser().parseFromString(result.content, 'text/html');
-    tab.editor.innerHTML = sanitizeHtml(doc.body.innerHTML);
-  } else {
-    tab.editor.innerHTML = textToHtml(result.content);
-  }
-  tab.savedHtml = tab.editor.innerHTML;
-  activateTab(tab.id);
-  updateTabChrome(tab);
-}
-
-async function cmdSave() {
+function cmdExport(format) {
   const tab = activeTab();
   if (!tab) return;
-  if (tab.handle) {
-    await platform.saveFile(tab.handle, serialize(tab));
-    tab.savedHtml = tab.editor.innerHTML;
-    updateTabChrome(tab);
+  const name = safeFileName(tab.title);
+  if (format === "html") {
+    download(name + ".html", htmlDoc(tab), "text/html");
   } else {
-    await cmdSaveAs();
+    download(name + ".txt", plainTextOf(tab.editor), "text/plain");
   }
 }
 
-async function cmdSaveAs() {
-  const tab = activeTab();
-  if (!tab) return;
-  const preferHtml = tab.format === 'html' || (!tab.fileName && hasFormatting(tab));
-  const base = (tab.fileName || tab.title).replace(/\.(txt|md|text|html|htm)$/i, '');
-  const suggested = base + (preferHtml ? '.html' : '.txt');
-  const result = await platform.pickSaveFile(suggested, preferHtml);
-  if (!result) return;
-  tab.fileName = result.name;
-  tab.title = result.name;
-  tab.handle = result.handle;
-  tab.format = formatFor(result.name);
-  const content = serialize(tab);
-  if (result.handle) {
-    await platform.saveFile(result.handle, content);
-  } else {
-    platform.download(result.name, content, tab.format === 'html' ? 'text/html' : 'text/plain');
-  }
-  tab.savedHtml = tab.editor.innerHTML;
-  updateTabChrome(tab);
-  scheduleSessionSave();
+function cmdLibrary() {
+  location.href = "library.html";
 }
 
 function cmdPrint() {
   const tab = activeTab();
   if (!tab) return;
-  platform.print(tab.editor.innerHTML, currentFontStack(), state.align);
+  printDocument(tab.editor.innerHTML, currentFontStack(), state.align);
+}
+
+async function cmdSignOut() {
+  await flushAll();
+  await Backend.signOut();
+  location.replace(Backend.pageUrl("login.html"));
 }
 
 /* ---------------- Edit commands ---------------- */
@@ -696,7 +589,7 @@ function setZoom(zoom) {
   const el = $('#status-zoom');
   el.hidden = state.zoom === 100;
   el.textContent = state.zoom + '%';
-  scheduleSessionSave();
+  schedulePrefsSave();
 }
 
 function currentFontStack() {
@@ -708,21 +601,21 @@ function setFont(name) {
   state.font = FONTS.some((f) => f.name === resolved) ? resolved : DEFAULT_FONT;
   $('#editor').style.fontFamily = currentFontStack();
   renderMenus();
-  scheduleSessionSave();
+  schedulePrefsSave();
 }
 
 function setAlign(name) {
   state.align = ['left', 'right', 'justify'].includes(name) ? name : 'left';
   $('#editor').style.textAlign = state.align;
   renderMenus();
-  scheduleSessionSave();
+  schedulePrefsSave();
 }
 
 function setTheme(name) {
   state.theme = name === 'dark' ? 'dark' : 'light';
   document.documentElement.dataset.theme = state.theme;
   renderMenus();
-  scheduleSessionSave();
+  schedulePrefsSave();
 }
 
 /* ---------------- Status bar ---------------- */
@@ -758,70 +651,198 @@ function updateStatus() {
     text.length.toLocaleString() + (text.length === 1 ? ' character' : ' characters');
 }
 
-/* ---------------- Session persistence (silent restore) ---------------- */
+/* ---------------- Cloud sync ----------------
+   A tab is a view onto a row in your account. Edits land in localStorage
+   immediately and reach the server a beat later, so a dropped connection
+   or a closed laptop costs nothing. Documents are created lazily: an
+   empty tab you never type in is never stored.                        */
 
-let sessionTimer = null;
+const SAVE_DEBOUNCE_MS = 800;
+const OPEN_TABS_KEY = 'machado-open-tabs-v1';
 
-function scheduleSessionSave() {
-  clearTimeout(sessionTimer);
-  sessionTimer = setTimeout(saveSession, 300);
+let syncStatus = 'idle'; // 'idle' | 'saving' | 'saved' | 'offline'
+
+function setSyncStatus(next) {
+  syncStatus = next;
+  const el = $('#status-sync');
+  if (!el) return;
+  const label = { idle: '', saving: 'Saving…', saved: 'Saved', offline: 'Offline — kept on this device' };
+  el.textContent = label[next] || '';
+  el.hidden = !label[next];
+  el.classList.toggle('is-offline', next === 'offline');
 }
 
-function saveSession() {
-  const data = {
-    tabs: state.tabs.map((t) => ({
-      title: t.title,
-      fileName: t.fileName,
-      content: t.editor.innerHTML,
-      savedContent: t.savedHtml,
-    })),
-    activeIndex: state.tabs.findIndex((t) => t.id === state.activeId),
-    font: state.font,
-    zoom: state.zoom,
-    align: state.align,
-    theme: state.theme,
-    untitledCounter: state.untitledCounter,
-  };
+// Which documents this device has open. Deliberately per-device: your
+// writing follows you everywhere, your desk arrangement does not.
+function rememberOpenTabs() {
+  const ids = state.tabs.map((t) => t.docId).filter(Boolean);
+  const activeDocId = activeTab()?.docId || null;
   try {
-    localStorage.setItem(SESSION_KEY, JSON.stringify(data));
-  } catch { /* storage full/unavailable — silently skip */ }
+    localStorage.setItem(OPEN_TABS_KEY, JSON.stringify({ ids, activeDocId }));
+  } catch { /* private mode — tabs just won't be remembered */ }
 }
 
-function restoreSession() {
-  let data = null;
-  let legacy = false;
+function readOpenTabs() {
   try {
-    data = JSON.parse(localStorage.getItem(SESSION_KEY));
-    if (!data) {
-      // v1 sessions stored plain text; convert to the rich-text model
-      data = JSON.parse(localStorage.getItem(LEGACY_SESSION_KEY));
-      legacy = true;
-    }
-  } catch { /* corrupted — start fresh */ }
-  if (!data || !Array.isArray(data.tabs) || data.tabs.length === 0) return false;
-  state.font = data.font || DEFAULT_FONT;
-  state.zoom = data.zoom || 100;
-  state.align = data.align || 'left';
-  state.theme = data.theme || null;
-  state.untitledCounter = data.untitledCounter || 1;
-  for (const t of data.tabs) {
-    createTab({
-      title: t.title,
-      fileName: t.fileName,
-      content: legacy ? textToHtml(t.content || '') : t.content || '',
-      savedContent: legacy ? textToHtml(t.savedContent ?? '') : t.savedContent ?? '',
-      handle: null, // file handles don't survive reload; Save falls back to Save As
+    return JSON.parse(localStorage.getItem(OPEN_TABS_KEY)) || { ids: [], activeDocId: null };
+  } catch {
+    return { ids: [], activeDocId: null };
+  }
+}
+
+function scheduleSave(tab) {
+  if (!tab) return;
+  tab.pendingHtml = tab.editor.innerHTML;
+  // Survive a crash even before the network call goes out.
+  if (tab.docId) {
+    Backend.stashPending(tab.docId, {
+      title: Backend.titleFrom(tab.pendingHtml),
+      content: tab.pendingHtml,
     });
   }
-  const idx = Math.max(0, Math.min(data.activeIndex ?? 0, state.tabs.length - 1));
-  activateTab(state.tabs[idx].id);
-  return true;
+  clearTimeout(tab.saveTimer);
+  tab.saveTimer = setTimeout(() => saveTab(tab), SAVE_DEBOUNCE_MS);
+  rememberOpenTabs();
 }
 
-window.addEventListener('beforeunload', saveSession);
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'hidden') saveSession();
+async function saveTab(tab) {
+  clearTimeout(tab.saveTimer);
+  const html = tab.editor.innerHTML;
+  if (html === tab.savedHtml) return;
+
+  // An untouched blank tab should not litter the library.
+  if (!tab.docId && !Backend.plainText(html)) return;
+
+  const title = Backend.titleFrom(html);
+  tab.saving = true;
+  setSyncStatus('saving');
+  try {
+    if (tab.docId) {
+      await Backend.updateDocument(tab.docId, { title, content: html });
+    } else {
+      const row = await Backend.createDocument({ title, content: html });
+      tab.docId = row.id;
+    }
+    tab.savedHtml = html;
+    tab.title = title;
+    Backend.clearPending(tab.docId);
+    updateTabChrome(tab);
+    rememberOpenTabs();
+    setSyncStatus('saved');
+    setTimeout(() => { if (syncStatus === 'saved') setSyncStatus('idle'); }, 1600);
+  } catch (err) {
+    // The text is already in localStorage; retry when we're back online.
+    setSyncStatus(navigator.onLine ? 'offline' : 'offline');
+    console.warn('save failed, kept locally:', err.message);
+  } finally {
+    tab.saving = false;
+  }
+}
+
+// Push every dirty tab now — used before signing out or closing.
+async function flushAll() {
+  await Promise.all(state.tabs.filter((t) => isDirty(t)).map((t) => saveTab(t)));
+}
+
+// Anything stranded by an earlier failure gets another chance.
+async function retryPending() {
+  if (!navigator.onLine) return;
+  const pending = Backend.readPending();
+  for (const [docId, payload] of Object.entries(pending)) {
+    try {
+      await Backend.updateDocument(docId, { title: payload.title, content: payload.content });
+      Backend.clearPending(docId);
+    } catch { /* still unreachable — leave it queued */ }
+  }
+  if (Object.keys(pending).length && syncStatus === 'offline') setSyncStatus('idle');
+}
+
+window.addEventListener('online', retryPending);
+setInterval(retryPending, 30000);
+
+// Best-effort flush when the tab goes away.
+window.addEventListener('pagehide', () => {
+  for (const tab of state.tabs) {
+    if (isDirty(tab) && tab.docId) {
+      Backend.stashPending(tab.docId, {
+        title: Backend.titleFrom(tab.editor.innerHTML),
+        content: tab.editor.innerHTML,
+      });
+    }
+  }
+  rememberOpenTabs();
 });
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') flushAll();
+});
+
+/* ---------------- Bringing older writing along ----------------
+   Before accounts, documents lived in this browser's localStorage. Any
+   text still sitting there belongs to whoever is signing in on this
+   machine, so lift it into the account once and leave a marker so it is
+   never imported twice.                                              */
+
+const LEGACY_KEYS = ['writers-notepad-session-v2', 'writers-notepad-session-v1'];
+const IMPORTED_FLAG = 'machado-imported-local-v1';
+
+function readLegacyDrafts() {
+  const drafts = [];
+  for (const key of LEGACY_KEYS) {
+    let data;
+    try {
+      data = JSON.parse(localStorage.getItem(key));
+    } catch {
+      continue;
+    }
+    if (!data || !Array.isArray(data.tabs)) continue;
+    const isPlainText = key.endsWith('v1');
+    for (const t of data.tabs) {
+      const raw = t.content || '';
+      const html = isPlainText ? textToHtml(raw) : raw;
+      if (!Backend.plainText(html)) continue;   // skip empty drafts
+      drafts.push(html);
+    }
+  }
+  return drafts;
+}
+
+async function importLegacyDrafts() {
+  if (localStorage.getItem(IMPORTED_FLAG)) return 0;
+  const drafts = readLegacyDrafts();
+  if (!drafts.length) {
+    localStorage.setItem(IMPORTED_FLAG, 'none');
+    return 0;
+  }
+  let imported = 0;
+  for (const html of drafts) {
+    try {
+      await Backend.createDocument({ title: Backend.titleFrom(html), content: html });
+      imported++;
+    } catch {
+      /* leave the flag unset so the next load tries again */
+      return imported;
+    }
+  }
+  localStorage.setItem(IMPORTED_FLAG, String(Date.now()));
+  return imported;
+}
+
+/* ---------------- Preferences ---------------- */
+
+let prefsTimer = null;
+
+function schedulePrefsSave() {
+  clearTimeout(prefsTimer);
+  prefsTimer = setTimeout(() => {
+    Backend.savePreferences({
+      font: state.font,
+      theme: state.theme,
+      zoom: state.zoom,
+      align: state.align,
+    }).catch(() => { /* preferences are not worth interrupting writing for */ });
+  }, 600);
+}
 
 /* ---------------- Command dispatch ---------------- */
 
@@ -831,10 +852,11 @@ function doCommand(name, arg) {
     closeTab: () => closeTab(state.activeId),
     nextTab: () => cycleTab(1),
     prevTab: () => cycleTab(-1),
-    open: cmdOpen,
-    save: cmdSave,
-    saveAs: cmdSaveAs,
+    library: cmdLibrary,
+    exportTxt: () => cmdExport('txt'),
+    exportHtml: () => cmdExport('html'),
     print: cmdPrint,
+    signOut: cmdSignOut,
     undo: editCommands.undo,
     redo: editCommands.redo,
     cut: editCommands.cut,
@@ -864,11 +886,16 @@ function menuDefinition() {
     {
       label: 'File',
       items: [
-        { label: 'New Tab', cmd: 'newTab', key: '⌘T' },
-        { label: 'Open…', cmd: 'open', key: '⌘O' },
+        { label: 'New Entry', cmd: 'newTab', key: '⌘T' },
+        { label: 'All Entries…', cmd: 'library', key: '⌘O' },
         { sep: true },
-        { label: 'Save', cmd: 'save', key: '⌘S' },
-        { label: 'Save As…', cmd: 'saveAs', key: '⇧⌘S' },
+        {
+          label: 'Export',
+          submenu: [
+            { label: 'Plain Text (.txt)', cmd: 'exportTxt' },
+            { label: 'HTML (keeps formatting)', cmd: 'exportHtml' },
+          ],
+        },
         { sep: true },
         { label: 'Print…', cmd: 'print', key: '⌘P' },
         { sep: true },
@@ -880,7 +907,9 @@ function menuDefinition() {
           ],
         },
         { sep: true },
-        { label: 'Close Tab', cmd: 'closeTab', key: '⌘W' },
+        { label: 'Close Entry', cmd: 'closeTab', key: '⌘W' },
+        { sep: true },
+        { label: 'Sign Out', cmd: 'signOut' },
       ],
     },
     {
@@ -1033,7 +1062,7 @@ document.addEventListener('keydown', (e) => {
   const map = {
     t: 'newTab',
     w: 'closeTab',            // browsers may reserve ⌘W/⌘T; native in Phase 2
-    o: 'open',
+    o: 'library',
     p: 'print',
     f: 'find',
     l: 'goToLine',
@@ -1047,7 +1076,11 @@ document.addEventListener('keydown', (e) => {
   };
 
   let cmd = null;
-  if (key === 's') cmd = e.shiftKey ? 'saveAs' : 'save';
+  // Everything autosaves, so swallow the browser's Save-page dialog and
+  // just flush instead — muscle memory still gets what it wants.
+  if (key === 's') { e.preventDefault(); flushAll(); return; }
+  else if (key === 'e' && e.shiftKey) cmd = 'exportHtml';
+  else if (key === 'e') cmd = 'exportTxt';
   else if (key === 'x' && e.shiftKey) cmd = 'strikethrough';
   else if (key === ']' && e.shiftKey) cmd = 'nextTab';
   else if (key === '[' && e.shiftKey) cmd = 'prevTab';
@@ -1072,13 +1105,84 @@ $('#goto-close').addEventListener('click', () => goTo.close());
 // Formatting should produce <b>/<i>/<u> tags, not styled spans
 try { document.execCommand('styleWithCSS', false, false); } catch { /* ignore */ }
 
-if (!restoreSession()) {
-  activateTab(createTab().id);
+// Open the document named in ?doc=, or a specific new one for ?new=1,
+// then fall back to whatever this device had open last.
+async function restoreWorkspace() {
+  const params = new URLSearchParams(location.search);
+  const wanted = params.get('doc');
+  const forceNew = params.get('new');
+  // Keep the address bar clean; the state now lives in the app.
+  if (wanted || forceNew) {
+    history.replaceState({}, '', location.pathname);
+  }
+
+  if (forceNew) {
+    activateTab(createTab().id);
+    return;
+  }
+
+  const { ids, activeDocId } = readOpenTabs();
+  const toOpen = wanted ? [wanted, ...ids.filter((id) => id !== wanted)] : ids;
+
+  let opened = 0;
+  for (const id of toOpen.slice(0, 12)) {
+    try {
+      const doc = await Backend.getDocument(id);
+      // A newer local copy means the last session ended before its save did.
+      const pending = Backend.getPending(doc.id);
+      const content = pending && pending.ts > Date.parse(doc.updated_at)
+        ? pending.content
+        : doc.content;
+      const tab = createTab({ docId: doc.id, title: doc.title, content });
+      if (pending && content !== doc.content) {
+        tab.savedHtml = doc.content;   // still needs pushing
+        scheduleSave(tab);
+      }
+      opened++;
+    } catch {
+      /* deleted elsewhere, or not ours — skip it */
+    }
+  }
+
+  if (!opened) {
+    activateTab(createTab().id);
+    return;
+  }
+  const focus =
+    state.tabs.find((t) => t.docId === (wanted || activeDocId)) || state.tabs[0];
+  activateTab(focus.id);
 }
-// First launch: theme follows the system; after that, the user's pick sticks
-setTheme(state.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
-setFont(state.font);
-setZoom(state.zoom);
-setAlign(state.align);
-renderMenus();
-updateStatus();
+
+(async () => {
+  if (!(await Backend.requireAuth())) return;
+
+  // Preferences follow the account; the system decides only on first run.
+  try {
+    const prefs = await Backend.loadPreferences();
+    if (prefs) {
+      state.font = prefs.font || DEFAULT_FONT;
+      state.zoom = prefs.zoom || 100;
+      state.align = prefs.align || 'left';
+      state.theme = prefs.theme || null;
+    }
+  } catch { /* offline — fall back to defaults */ }
+
+  setTheme(state.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+  setFont(state.font);
+  setZoom(state.zoom);
+  setAlign(state.align);
+  renderMenus();
+
+  try {
+    const brought = await importLegacyDrafts();
+    if (brought) {
+      setSyncStatus('saved');
+      console.info(`Brought ${brought} local draft(s) into your account.`);
+    }
+  } catch { /* not worth blocking the editor over */ }
+
+  await restoreWorkspace();
+  updateStatus();
+  retryPending();
+  document.body.classList.remove('booting');
+})();

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
+  <title>Entries · Machado</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="stylesheet" href="theme.css">
+  <link rel="stylesheet" href="pages.css">
+</head>
+<body class="page-scroll">
+
+  <header class="topbar">
+    <a class="wordmark-link" href="index.html" title="Back to the editor">
+      <img class="wordmark" src="logo.svg" alt="Machado" width="150" height="26">
+    </a>
+    <div class="topbar-actions">
+      <button type="button" class="btn-quiet" id="new-entry">New entry</button>
+      <button type="button" class="btn-quiet" id="sign-out">Sign out</button>
+    </div>
+  </header>
+
+  <main class="library">
+    <h1 class="library-heading">Entries</h1>
+    <p class="library-count" id="count"></p>
+
+    <p class="state" id="state">Loading…</p>
+
+    <ul class="entries" id="entries"></ul>
+  </main>
+
+  <script src="vendor/supabase.js"></script>
+  <script src="backend.js"></script>
+  <script src="library.js"></script>
+</body>
+</html>
