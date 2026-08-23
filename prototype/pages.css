@@ -20,11 +20,17 @@ body {
 
 .page-scroll { min-height: 100vh; }
 
+/* The wordmark is drawn as a mask rather than an <img>, because an image
+   is its own document — the page's colour cannot reach inside it, so the
+   artwork stayed black on a dark background. As a mask, the ink is
+   painted by CSS and follows the theme. */
 .wordmark {
-  height: 26px;
-  width: auto;
   display: block;
-  color: var(--ink);
+  height: 26px;
+  aspect-ratio: 150 / 26;
+  background-color: var(--ink);
+  -webkit-mask: url('logo.svg') no-repeat center / contain;
+  mask: url('logo.svg') no-repeat center / contain;
 }
 
 /* ---------------- Sign in ---------------- */

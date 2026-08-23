@@ -121,7 +121,9 @@
   --find-cur:  #E9C96B;
   --selection: #D9E2EF;
 
-  --ui-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+  /* Inter is self-hosted above, so menus, tabs and headings look the same
+     on macOS and Windows instead of borrowing each system's own face. */
+  --ui-font: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --editor-size: 17px;    /* scaled by zoom via JS */
 }
 
