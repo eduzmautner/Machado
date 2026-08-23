@@ -6,6 +6,14 @@ app/build/icon.iconset/
 # WIP landing page — not published yet
 site/
 
+# secrets — these belong in the Supabase dashboard, never in the repo.
+# (The Supabase anon key in prototype/backend.js is deliberately public;
+#  Row Level Security is what protects the data. These are not.)
+client_secret*.json
+*.pem
+.env
+.env.*
+
 # local tooling & OS noise
 .claude/
 .DS_Store
