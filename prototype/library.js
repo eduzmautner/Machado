@@ -307,6 +307,20 @@ function showSettings(on) {
   document.title = on ? 'Settings · Machado' : 'Entries · Machado';
 }
 
+// The theme belongs to the account, so changing it here reaches the
+// editor too. The localStorage mirror is what lets every page paint the
+// right palette before its preferences arrive (see theme-boot.js).
+function setTheme(theme, persist = true) {
+  document.documentElement.dataset.theme = theme;
+  $('#theme-toggle').setAttribute('aria-checked', String(theme === 'dark'));
+  try { localStorage.setItem('machado-theme', theme); } catch { /* ignore */ }
+  if (persist) {
+    Backend.savePreferences({ theme }).catch(() => {
+      /* it still applies on this device; the next save will catch up */
+    });
+  }
+}
+
 function setShowExcerpts(on, persist = true) {
   view.showExcerpts = on;
   $('#excerpt-toggle').setAttribute('aria-checked', String(on));
@@ -345,6 +359,11 @@ $('#open-settings').addEventListener('click', () => { toggleAccountMenu(false); 
 $('#back-to-library').addEventListener('click', () => showSettings(false));
 $('#excerpt-toggle').addEventListener('click', () => setShowExcerpts(!view.showExcerpts));
 
+$('#theme-toggle').addEventListener('click', () => {
+  const isDark = document.documentElement.dataset.theme === 'dark';
+  setTheme(isDark ? 'light' : 'dark');
+});
+
 $('#sign-out').addEventListener('click', async () => {
   await Backend.signOut();
   location.replace(Backend.pageUrl('login.html'));
@@ -376,8 +395,7 @@ document.addEventListener('keydown', (e) => {
 function applyPreferences(prefs) {
   const theme =
     prefs?.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-  document.documentElement.dataset.theme = theme;
-  try { localStorage.setItem('machado-theme', theme); } catch { /* ignore */ }
+  setTheme(theme, false);
   if (prefs && prefs.show_excerpts === false) setShowExcerpts(false, false);
 }
 

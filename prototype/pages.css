@@ -694,8 +694,18 @@ body {
   color: var(--ink);
 }
 
+/* Section labels above each group of settings */
+.settings-section {
+  margin-top: 30px;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+
+.settings-heading + .settings-section { margin-top: 22px; }
+
 .settings-block {
-  margin-top: 28px;
+  margin-top: 10px;
   border-top: 1px solid var(--divider);
   border-bottom: 1px solid var(--divider);
 }

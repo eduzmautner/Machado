@@ -8,9 +8,9 @@
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <script src="theme-boot.js?v=5"></script>
-  <link rel="stylesheet" href="theme.css?v=5">
-  <link rel="stylesheet" href="pages.css?v=5">
+  <script src="theme-boot.js?v=6"></script>
+  <link rel="stylesheet" href="theme.css?v=6">
+  <link rel="stylesheet" href="pages.css?v=6">
 </head>
 <body class="page-library">
 
@@ -106,8 +106,20 @@
       Back to entries
     </button>
     <h1 class="settings-heading">Settings</h1>
-    <p class="subtle">Library display</p>
 
+    <p class="subtle settings-section">Appearance</p>
+    <div class="settings-block">
+      <div class="settings-row">
+        <div>
+          <h2>Dark mode</h2>
+          <p>Applies everywhere, including the editor.</p>
+        </div>
+        <button type="button" class="toggle" id="theme-toggle" role="switch"
+                aria-checked="false" aria-label="Dark mode"><span class="knob"></span></button>
+      </div>
+    </div>
+
+    <p class="subtle settings-section">Library display</p>
     <div class="settings-block">
       <div class="settings-row">
         <div>
@@ -121,7 +133,7 @@
   </main>
 
   <script src="vendor/supabase.js"></script>
-  <script src="backend.js?v=5"></script>
-  <script src="library.js?v=5"></script>
+  <script src="backend.js?v=6"></script>
+  <script src="library.js?v=6"></script>
 </body>
 </html>
