@@ -729,9 +729,9 @@ body {
   padding: 0;
   border: 1px solid var(--menu-border);
   border-radius: 999px;
-  background: var(--field-bg);
+  background: var(--toggle-off);
   cursor: pointer;
-  transition: background 140ms ease;
+  transition: background 140ms ease, border-color 140ms ease;
 }
 
 .toggle[aria-checked='true'] {
@@ -739,6 +739,7 @@ body {
   border-color: var(--ok);
 }
 
+/* The knob stays light against either track — dark on green reads as off. */
 .toggle .knob {
   position: absolute;
   top: 2px;
@@ -746,14 +747,11 @@ body {
   width: 17px;
   height: 17px;
   border-radius: 50%;
-  background: var(--ink);
+  background: var(--knob);
   transition: left 140ms ease;
 }
 
-.toggle[aria-checked='true'] .knob {
-  left: 20px;
-  background: var(--lib-bg);
-}
+.toggle[aria-checked='true'] .knob { left: 20px; }
 
 /* ---------------- Focus ---------------- */
 
