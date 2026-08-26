@@ -155,12 +155,13 @@ let tabIdCounter = 1;
 
 /* ---------------- Tabs ---------------- */
 
-function createTab({ docId = null, title = null, content = '' } = {}) {
+function createTab({ docId = null, title = null, content = '', titleManual = false } = {}) {
   const id = tabIdCounter++;
   const tab = {
     id,
     docId,                    // row in `documents`; null until the first words
     title: title || 'Untitled',
+    titleManual,              // renamed by hand? then stop deriving the title
     savedHtml: '',            // innerHTML as of the last confirmed save
     saveTimer: null,
     saving: false,
@@ -716,7 +717,9 @@ async function saveTab(tab) {
   // An untouched blank tab should not litter the library.
   if (!tab.docId && !Backend.plainText(html)) return;
 
-  const title = Backend.titleFrom(html);
+  // A document titles itself from its first line — unless it was renamed
+  // by hand in the library, in which case that name is left alone.
+  const title = tab.titleManual ? tab.title : Backend.titleFrom(html);
   tab.saving = true;
   setSyncStatus('saving');
   try {
@@ -1143,7 +1146,12 @@ async function restoreWorkspace() {
       const content = pending && pending.ts > Date.parse(doc.updated_at)
         ? pending.content
         : doc.content;
-      const tab = createTab({ docId: doc.id, title: doc.title, content });
+      const tab = createTab({
+        docId: doc.id,
+        title: doc.title,
+        content,
+        titleManual: !!doc.title_manual,
+      });
       if (pending && content !== doc.content) {
         tab.savedHtml = doc.content;   // still needs pushing
         scheduleSave(tab);

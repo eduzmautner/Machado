@@ -6,6 +6,8 @@ The fonts in this folder are licensed under the SIL Open Font License, Version 1
               https://github.com/rsms/inter
   Work Sans — Copyright 2019 The Work Sans Project Authors
               https://github.com/weiweihuanghuang/Work-Sans
+  Spectral  — Copyright 2017 The Spectral Project Authors
+              https://github.com/productiontype/Spectral
 
 The full license text follows.
 

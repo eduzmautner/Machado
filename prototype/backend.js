@@ -66,7 +66,7 @@ const Backend = (() => {
   async function listDocuments() {
     const { data, error } = await client
       .from('documents')
-      .select('id, title, content, updated_at')
+      .select('id, title, content, created_at, updated_at, title_manual')
       .order('updated_at', { ascending: false });
     if (error) throw error;
     return data;
@@ -75,7 +75,7 @@ const Backend = (() => {
   async function getDocument(id) {
     const { data, error } = await client
       .from('documents')
-      .select('id, title, content, updated_at')
+      .select('id, title, content, created_at, updated_at, title_manual')
       .eq('id', id)
       .single();
     if (error) throw error;
@@ -87,7 +87,7 @@ const Backend = (() => {
     const { data, error } = await client
       .from('documents')
       .insert({ user_id: s.user.id, title, content })
-      .select('id, title, content, updated_at')
+      .select('id, title, content, created_at, updated_at, title_manual')
       .single();
     if (error) throw error;
     return data;
@@ -104,6 +104,19 @@ const Backend = (() => {
     return data;
   }
 
+  // Renaming pins the title: the editor will stop re-deriving it from the
+  // document's first line, so the name you chose survives further writing.
+  async function renameDocument(id, title) {
+    const { data, error } = await client
+      .from('documents')
+      .update({ title, title_manual: true })
+      .eq('id', id)
+      .select('id, title, updated_at, title_manual')
+      .single();
+    if (error) throw error;
+    return data;
+  }
+
   async function deleteDocument(id) {
     const { error } = await client.from('documents').delete().eq('id', id);
     if (error) throw error;
@@ -114,7 +127,7 @@ const Backend = (() => {
   async function loadPreferences() {
     const { data, error } = await client
       .from('preferences')
-      .select('font, theme, zoom, align')
+      .select('font, theme, zoom, align, show_excerpts')
       .maybeSingle();
     if (error) throw error;
     return data;
@@ -190,7 +203,7 @@ const Backend = (() => {
     client,
     pageUrl,
     session, requireAuth, signIn, signUp, signInWithGoogle, signOut, onAuthChange,
-    listDocuments, getDocument, createDocument, updateDocument, deleteDocument,
+    listDocuments, getDocument, createDocument, updateDocument, renameDocument, deleteDocument,
     loadPreferences, savePreferences,
     stashPending, clearPending, getPending, readPending,
     plainText, titleFrom,

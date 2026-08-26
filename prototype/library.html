@@ -8,35 +8,120 @@
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <script src="theme-boot.js?v=3"></script>
-  <link rel="stylesheet" href="theme.css?v=3">
-  <link rel="stylesheet" href="pages.css?v=3">
+  <script src="theme-boot.js?v=4"></script>
+  <link rel="stylesheet" href="theme.css?v=4">
+  <link rel="stylesheet" href="pages.css?v=4">
 </head>
-<body class="page-scroll">
+<body class="page-library">
 
   <header class="topbar">
     <a class="wordmark-link" href="index.html" title="Back to the editor">
       <span class="wordmark" role="img" aria-label="Machado"></span>
     </a>
+
     <div class="topbar-actions">
-      <button type="button" class="btn-cta" id="new-entry">
-        New Entry <span class="btn-plus" aria-hidden="true">+</span>
+      <button type="button" class="btn-new" id="new-entry">
+        New <span aria-hidden="true">+</span>
       </button>
-      <button type="button" class="btn-quiet" id="sign-out">Sign out</button>
+
+      <div class="avatar-wrap">
+        <button type="button" class="avatar" id="avatar-btn"
+                aria-label="Account" aria-haspopup="true" aria-expanded="false"></button>
+        <div class="menu" id="account-menu" hidden>
+          <button type="button" id="open-settings">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+            Settings
+          </button>
+          <button type="button" id="sign-out">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+            Sign out
+          </button>
+        </div>
+      </div>
     </div>
   </header>
 
-  <main class="library">
-    <h1 class="library-heading">Entries</h1>
-    <p class="library-count" id="count"></p>
+  <!-- Entries -->
+  <main class="shell" id="library-view">
+    <div class="list-head">
+      <div>
+        <h1>Entries</h1>
+        <p class="subtle" id="count"></p>
+      </div>
 
+      <div class="search">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"></circle>
+          <line x1="16" y1="16" x2="21" y2="21"></line>
+        </svg>
+        <input type="search" id="search-input" placeholder="Search entries"
+               aria-label="Search entries" autocomplete="off" spellcheck="false">
+        <button type="button" class="search-clear" id="search-clear" aria-label="Clear search" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+               stroke-linecap="round" aria-hidden="true">
+            <line x1="5" y1="5" x2="19" y2="19"></line>
+            <line x1="19" y1="5" x2="5" y2="19"></line>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="rows" id="rows"></div>
     <p class="state" id="state">Loading…</p>
 
-    <ul class="entries" id="entries"></ul>
+    <div class="pager" id="pager" hidden>
+      <button type="button" class="arrow" id="prev-page" aria-label="Previous page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="15 5 8 12 15 19"></polyline>
+        </svg>
+      </button>
+      <span class="page-nums" id="page-nums"></span>
+      <button type="button" class="arrow" id="next-page" aria-label="Next page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="9 5 16 12 9 19"></polyline>
+        </svg>
+      </button>
+    </div>
+  </main>
+
+  <!-- Settings -->
+  <main class="shell" id="settings-view" hidden>
+    <button type="button" class="back" id="back-to-library">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polyline points="15 5 8 12 15 19"></polyline>
+      </svg>
+      Back to entries
+    </button>
+    <h1 class="settings-heading">Settings</h1>
+    <p class="subtle">Library display</p>
+
+    <div class="settings-block">
+      <div class="settings-row">
+        <div>
+          <h2>Show excerpts</h2>
+          <p>Display the first line of each entry underneath its title.</p>
+        </div>
+        <button type="button" class="toggle" id="excerpt-toggle" role="switch"
+                aria-checked="true" aria-label="Show excerpts"><span class="knob"></span></button>
+      </div>
+    </div>
   </main>
 
   <script src="vendor/supabase.js"></script>
-  <script src="backend.js?v=3"></script>
-  <script src="library.js?v=3"></script>
+  <script src="backend.js?v=4"></script>
+  <script src="library.js?v=4"></script>
 </body>
 </html>

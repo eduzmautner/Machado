@@ -103,6 +103,24 @@
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
+/* Spectral — entry titles and excerpts in the library. */
+@font-face {
+  font-family: 'Spectral';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('fonts/spectral-normal-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Spectral';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('fonts/spectral-normal-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 /* ------------------------------------------------------------------
    Writer's Notepad — prototype stylesheet
    Palette: warm ivory paper, warm ink, one accent (wet-ink blue).
@@ -121,9 +139,27 @@
   --find-cur:  #E9C96B;
   --selection: #D9E2EF;
 
+  /* Library surfaces. The dark values come straight from the design
+     reference; these are their daylight counterparts. */
+  --lib-bg:        #F9F8F6;
+  --header-bg:     rgba(249, 248, 246, 0.72);
+  --dim:           #6E6D6A;
+  --divider:       #E4E3E0;
+  --row-hover:     #EFEEEB;
+  --menu-bg:       #FFFFFF;
+  --menu-border:   #E0DFDC;
+  --menu-hover:    #F1F0EE;
+  --field-bg:      #EFEEEB;
+  --field-focus:   #E9E8E5;
+  --field-border:  #D8D7D3;
+  --danger:        #C4362F;
+  --ok:            #2F8F55;
+  --icon:          #85847F;
+
   /* Inter is self-hosted above, so menus, tabs and headings look the same
      on macOS and Windows instead of borrowing each system's own face. */
   --ui-font: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --read-font: Spectral, Georgia, serif;   /* entry titles in the library */
   --editor-size: 17px;    /* scaled by zoom via JS */
 }
 
@@ -141,6 +177,21 @@
   --find-hl:   #3A3A3A;
   --find-cur:  #555555;
   --selection: #454545;
+
+  --lib-bg:        #171717;
+  --header-bg:     #14141498;
+  --dim:           #6F6F6F;
+  --divider:       #303030;
+  --row-hover:     #0C0C0C;
+  --menu-bg:       #232323;
+  --menu-border:   #333333;
+  --menu-hover:    #2E2E2E;
+  --field-bg:      #232323;
+  --field-focus:   #2A2A2A;
+  --field-border:  #3D3D3D;
+  --danger:        #E5484D;
+  --ok:            #2F9E5F;
+  --icon:          #8F8F8F;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
