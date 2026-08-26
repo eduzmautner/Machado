@@ -164,6 +164,9 @@
   --ui-font: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --read-font: Spectral, Georgia, serif;   /* entry titles in the library */
   --editor-size: 17px;    /* scaled by zoom via JS */
+  /* Height of the editor's floating menu bar + tab strip. Fixed, because
+     the chrome does not scale with the editor's zoom. */
+  --chrome-h: 67px;
 }
 
 /* Dark: same lightness values, zero saturation — plain grays.

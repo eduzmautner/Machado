@@ -9,6 +9,7 @@ html, body {
 }
 
 body {
+  position: relative;
   display: flex;
   flex-direction: column;
   background: var(--paper);
@@ -17,14 +18,29 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* ---------------- Prototype menu bar (deleted in Phase 2) ---------------- */
+/* ---------------- Top chrome ----------------
+   Menu bar and tab strip float above the page rather than sitting on
+   top of it, so writing slides underneath and the blur has something
+   to work on — the same frosted bar the Library uses. */
+
+.topchrome {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  background-color: var(--header-bg);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  border-bottom: 1px solid var(--line);
+}
+
 
 .menubar {
   display: flex;
   align-items: center;
   gap: 2px;
   padding: 2px 10px;
-  background: var(--chrome);
   font-size: 13px;
   color: var(--ink);
   user-select: none;
@@ -134,8 +150,6 @@ body {
   align-items: flex-end;
   gap: 4px;
   padding: 8px 10px 0 10px;
-  background: var(--chrome);
-  border-bottom: 1px solid var(--line);
   min-height: 40px;
   user-select: none;
 }
@@ -268,7 +282,7 @@ body {
   inset: 0;
   width: 100%;
   height: 100%;
-  padding: 56px max(32px, calc((100% - 31em) / 2)) 45vh;
+  padding: calc(var(--chrome-h) + 22px) max(32px, calc((100% - 31em) / 2)) 45vh;
   font-family: inherit;
   font-size: inherit;
   line-height: 1.65;
@@ -309,7 +323,7 @@ body {
 
 .doc-scrollbar {
   position: absolute;
-  top: 4px;
+  top: calc(var(--chrome-h) + 4px);
   right: 3px;
   bottom: 4px;
   width: 8px;
@@ -343,7 +357,7 @@ body {
 
 .floatbar {
   position: absolute;
-  top: 96px;
+  top: calc(var(--chrome-h) + 14px);
   right: 26px;
   display: flex;
   align-items: center;

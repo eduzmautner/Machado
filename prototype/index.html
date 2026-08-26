@@ -8,17 +8,20 @@
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <script src="theme-boot.js?v=6"></script>
-  <link rel="stylesheet" href="theme.css?v=6">
-  <link rel="stylesheet" href="style.css?v=6">
+  <script src="theme-boot.js?v=7"></script>
+  <link rel="stylesheet" href="theme.css?v=7">
+  <link rel="stylesheet" href="style.css?v=7">
 </head>
 <body class="booting">
 
-  <header id="menubar" class="menubar" aria-label="Menu bar"></header>
+  <!-- Menu bar and tabs ride above the page, so writing passes under them -->
+  <div class="topchrome">
+    <header id="menubar" class="menubar" aria-label="Menu bar"></header>
 
-  <div class="tabstrip" id="tabstrip">
-    <div class="tabs" id="tabs" role="tablist"></div>
-    <button class="tab-add" id="tab-add" title="New entry (⌘T)" aria-label="New entry">+</button>
+    <div class="tabstrip" id="tabstrip">
+      <div class="tabs" id="tabs" role="tablist"></div>
+      <button class="tab-add" id="tab-add" title="New entry (⌘T)" aria-label="New entry">+</button>
+    </div>
   </div>
 
   <main class="editor" id="editor"></main>
@@ -53,7 +56,7 @@
   <div id="print-root" aria-hidden="true"></div>
 
   <script src="vendor/supabase.js"></script>
-  <script src="backend.js?v=6"></script>
-  <script src="app.js?v=6"></script>
+  <script src="backend.js?v=7"></script>
+  <script src="app.js?v=7"></script>
 </body>
 </html>
