@@ -8,9 +8,9 @@
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <script src="theme-boot.js?v=11"></script>
-  <link rel="stylesheet" href="theme.css?v=11">
-  <link rel="stylesheet" href="pages.css?v=11">
+  <script src="theme-boot.js?v=13"></script>
+  <link rel="stylesheet" href="theme.css?v=13">
+  <link rel="stylesheet" href="pages.css?v=13">
 </head>
 <body class="page-library">
 
@@ -123,6 +123,23 @@
     <div class="settings-block">
       <div class="settings-row">
         <div>
+          <h2>Typeface</h2>
+          <p>The font for entry titles and excerpts.</p>
+        </div>
+        <div class="picker">
+          <button type="button" class="picker-btn" id="entry-font-btn"
+                  aria-label="Typeface" aria-haspopup="true" aria-expanded="false">
+            <span id="entry-font-label"></span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="5 9 12 16 19 9"></polyline>
+            </svg>
+          </button>
+          <div class="menu" id="entry-font-menu" hidden></div>
+        </div>
+      </div>
+      <div class="settings-row">
+        <div>
           <h2>Show excerpts</h2>
           <p>Display the first line of each entry underneath its title.</p>
         </div>
@@ -133,7 +150,7 @@
   </main>
 
   <script src="vendor/supabase.js"></script>
-  <script src="backend.js?v=11"></script>
-  <script src="library.js?v=11"></script>
+  <script src="backend.js?v=13"></script>
+  <script src="library.js?v=13"></script>
 </body>
 </html>

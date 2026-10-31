@@ -475,10 +475,10 @@ body {
 
 .row-title {
   font-family: var(--read-font);
-  font-size: 20px;
+  font-size: var(--read-title-size);
   font-weight: 400;
   line-height: 1.25;
-  letter-spacing: -0.03em;
+  letter-spacing: var(--read-tracking);
   color: var(--ink);
   white-space: nowrap;
   overflow: hidden;
@@ -488,10 +488,10 @@ body {
 .row-excerpt {
   margin-top: 4px;
   font-family: var(--read-font);
-  font-size: 15px;
+  font-size: var(--read-excerpt-size);
   font-weight: 400;
   line-height: 1.35;
-  color: var(--dim);
+  color: var(--read-excerpt-ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -568,10 +568,10 @@ body {
   outline: none;
   background: var(--field-bg);
   font-family: var(--read-font);
-  font-size: 20px;
+  font-size: var(--read-title-size);
   font-weight: 400;
   line-height: 1.25;
-  letter-spacing: -0.03em;
+  letter-spacing: var(--read-tracking);
   color: var(--ink);
 }
 
@@ -718,6 +718,8 @@ body {
   padding: 18px 12px;
 }
 
+.settings-row + .settings-row { border-top: 1px solid var(--divider); }
+
 .settings-row h2 {
   font-size: 14px;
   font-weight: 500;
@@ -762,6 +764,49 @@ body {
 }
 
 .toggle[aria-checked='true'] .knob { left: 20px; }
+
+/* A dropdown built on the app's own menu, because a native one couldn't
+   show each option in its typeface. */
+.picker {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.picker-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 132px;
+  justify-content: space-between;
+  padding: 6px 9px 6px 12px;
+  font-family: var(--read-font);
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--field-bg);
+  border: 1px solid var(--field-border);
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.picker-btn svg {
+  width: 13px;
+  height: 13px;
+  color: var(--icon);
+}
+
+.picker .menu {
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 100%;
+}
+
+.picker .menu button {
+  font-family: var(--read-font);
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.picker .menu svg { margin-left: auto; }
 
 /* ---------------- Focus ---------------- */
 

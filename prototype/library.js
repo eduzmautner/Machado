@@ -12,11 +12,18 @@ const $ = (sel) => document.querySelector(sel);
 
 const PER_PAGE = 10;
 
+const ENTRY_FONTS = [
+  { id: 'serif', label: 'Georgia' },
+  { id: 'sans', label: 'Inter' },
+  { id: 'mono', label: 'Courier New' },
+];
+
 const view = {
   docs: [],
   query: '',
   page: 1,
   showExcerpts: true,
+  entryFont: 'serif',
   openMenu: null,      // id of the entry whose ... menu is open
   confirming: null,    // id awaiting a second click on Delete
   renaming: null,      // id being renamed in place
@@ -332,6 +339,51 @@ function setShowExcerpts(on, persist = true) {
   }
 }
 
+function setEntryFont(id, persist = true) {
+  view.entryFont = ENTRY_FONTS.some((f) => f.id === id) ? id : 'serif';
+  document.documentElement.dataset.entryFont = view.entryFont;
+  $('#entry-font-btn').dataset.entryFont = view.entryFont;
+  $('#entry-font-label').textContent =
+    ENTRY_FONTS.find((f) => f.id === view.entryFont).label;
+  renderEntryFontMenu();
+  if (persist) {
+    Backend.savePreferences({ entry_font: view.entryFont }).catch(() => {
+      /* a display preference is not worth interrupting anyone over */
+    });
+  }
+}
+
+// Each item carries its own data-entry-font, so it previews itself: your
+// entries aren't on screen while you choose.
+function renderEntryFontMenu() {
+  const menu = entryFontMenu();
+  menu.innerHTML = '';
+  for (const font of ENTRY_FONTS) {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.dataset.entryFont = font.id;
+    item.textContent = font.label;
+    if (font.id === view.entryFont) {
+      item.insertAdjacentHTML('beforeend', icon('<path d="M4.5 12.5l5 5 10-11"/>', { width: 2.1 }));
+    }
+    item.addEventListener('click', () => {
+      setEntryFont(font.id);
+      toggleEntryFontMenu(false);
+      $('#entry-font-btn').focus();
+    });
+    menu.appendChild(item);
+  }
+}
+
+const entryFontMenu = () => $('#entry-font-menu');
+
+function toggleEntryFontMenu(open) {
+  const menu = entryFontMenu();
+  const next = open ?? menu.hidden;
+  menu.hidden = !next;
+  $('#entry-font-btn').setAttribute('aria-expanded', String(next));
+}
+
 /* ---------------- Wiring ---------------- */
 
 $('#new-entry').addEventListener('click', () => { location.href = 'index.html?new=1'; });
@@ -358,6 +410,7 @@ $('#avatar-btn').addEventListener('click', () => toggleAccountMenu());
 $('#open-settings').addEventListener('click', () => { toggleAccountMenu(false); showSettings(true); });
 $('#back-to-library').addEventListener('click', () => showSettings(false));
 $('#excerpt-toggle').addEventListener('click', () => setShowExcerpts(!view.showExcerpts));
+$('#entry-font-btn').addEventListener('click', () => toggleEntryFontMenu());
 
 $('#theme-toggle').addEventListener('click', () => {
   const isDark = document.documentElement.dataset.theme === 'dark';
@@ -375,6 +428,7 @@ document.addEventListener('pointerdown', (e) => {
   if (!t.closest('#avatar-btn') && !t.closest('#account-menu') && !accountMenu().hidden) {
     toggleAccountMenu(false);
   }
+  if (!t.closest('.picker') && !entryFontMenu().hidden) toggleEntryFontMenu(false);
   if (!t.closest('[data-row-menu-btn]') && !t.closest('[data-row-menu]') && view.openMenu !== null) {
     view.openMenu = null;
     view.confirming = null;
@@ -385,6 +439,11 @@ document.addEventListener('pointerdown', (e) => {
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
   if (!accountMenu().hidden) { toggleAccountMenu(false); return; }
+  if (!entryFontMenu().hidden) {
+    toggleEntryFontMenu(false);
+    $('#entry-font-btn').focus();
+    return;
+  }
   if (view.openMenu !== null) { view.openMenu = null; view.confirming = null; render(); }
 });
 
@@ -397,6 +456,7 @@ function applyPreferences(prefs) {
     prefs?.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   setTheme(theme, false);
   if (prefs && prefs.show_excerpts === false) setShowExcerpts(false, false);
+  setEntryFont(prefs?.entry_font, false);
 }
 
 (async () => {
@@ -405,6 +465,10 @@ function applyPreferences(prefs) {
 
   $('#avatar-btn').textContent = initialsFor(session.user);
   $('#avatar-btn').title = session.user.email || 'Account';
+  setEntryFont(view.entryFont, false);
+  // Until preferences arrive, or if they never do, show what theme-boot chose
+  $('#theme-toggle').setAttribute(
+    'aria-checked', String(document.documentElement.dataset.theme === 'dark'));
 
   try {
     applyPreferences(await Backend.loadPreferences());
