@@ -48,6 +48,24 @@ body {
   z-index: 30;
 }
 
+.menubar-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 22px;
+  margin-right: 5px;
+  padding: 0;
+  border: none;
+  border-radius: 5px;
+  background: none;
+  color: var(--ink);
+  cursor: default;
+}
+
+.menubar-icon:hover { background: var(--chrome-2); }
+.menubar-icon svg { width: 15px; height: 15px; display: block; }
+
 .menu {
   position: relative;
 }
@@ -169,7 +187,7 @@ body {
   gap: 7px;
   max-width: 200px;
   padding: 6px 10px 7px 14px;
-  border-radius: 8px 8px 0 0;
+  border-radius: 6px 6px 0 0;
   border: 1px solid transparent;
   border-bottom: none;
   font-size: 12.5px;
@@ -188,6 +206,20 @@ body {
   background: var(--paper);
   border-color: var(--line);
   color: var(--ink);
+}
+
+.tab-rename {
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--ink);
+  background: var(--field-bg);
+  border: 1px solid var(--field-border);
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin: -2px 0;
+  outline: none;
+  width: 150px;
+  min-width: 0;
 }
 
 .tab-title {
@@ -251,6 +283,16 @@ body {
   color: var(--ink);
 }
 
+/* ---------------- Column width ----------------
+   Edit > Column Width. Narrow is the default and the floor: it holds a
+   line to roughly a dozen words, which is the comfortable measure this
+   app is built around. The wider steps are there when you want them. */
+
+:root[data-col='narrow'] { --col-width: 31em; }
+:root[data-col='medium'] { --col-width: 38em; }
+:root[data-col='wide']   { --col-width: 46em; }
+:root[data-col='full']   { --col-width: 100%; }
+
 /* ---------------- Editor ---------------- */
 
 .editor {
@@ -282,7 +324,9 @@ body {
   inset: 0;
   width: 100%;
   height: 100%;
-  padding: calc(var(--chrome-h) + 22px) max(32px, calc((100% - 31em) / 2)) 45vh;
+  padding: calc(var(--chrome-h) + 22px)
+           max(var(--col-gutter, 32px), calc((100% - var(--col-width, 31em)) / 2))
+           45vh;
   font-family: inherit;
   font-size: inherit;
   line-height: 1.65;
@@ -484,3 +528,15 @@ body.booting .menubar { visibility: hidden; }
 #status-sync[hidden] { display: none; }
 #status-sync.is-offline { color: #A9762F; }
 :root[data-theme="dark"] #status-sync.is-offline { color: #C9A05E; }
+
+/* ---------------- Phones ----------------
+   The column is always the width of the device here — a narrow measure on a
+   narrow screen would only waste it. */
+
+@media (max-width: 700px) {
+  :root,
+  :root[data-col] {
+    --col-width: 100%;
+    --col-gutter: 20px;
+  }
+}

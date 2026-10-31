@@ -45,6 +45,11 @@ function shortcutLabel(key) {
   return mods.concat(key.replace(/[⌘⇧⌥⌃]/g, '').replace('−', '-')).join('+');
 }
 
+// Narrow is both the default and the floor: a line of roughly a dozen
+// words. The wider steps exist for people who want them.
+const COLUMN_WIDTHS = ['Narrow', 'Medium', 'Wide', 'Full'];
+const DEFAULT_COLUMN = 'Narrow';
+
 const DEFAULT_FONT = 'Georgia';
 const BASE_FONT_PX = 17;
 const ZOOM_MIN = 50, ZOOM_MAX = 200, ZOOM_STEP = 10;
@@ -67,8 +72,8 @@ const BLOCK_RE = /^(DIV|P)$/;
 
 // Walk an element's contents producing plain text (one \n per line) and,
 // optionally, the list of text nodes with their offsets into that text.
-// Every consumer (status bar, find, go-to-line, save-as-txt) uses this
-// walker so offsets always agree.
+// Every consumer (status bar, find, save-as-txt) uses this walker so
+// offsets always agree.
 function collectText(root) {
   const parts = [];
   let text = '';
@@ -148,6 +153,7 @@ const state = {
   font: DEFAULT_FONT,
   zoom: 100,
   align: 'left',     // 'left' | 'right' | 'justify'
+  columnWidth: DEFAULT_COLUMN,
   theme: null,       // 'light' | 'dark'; resolved from system on first launch
 };
 
@@ -181,6 +187,11 @@ function createTab({ docId = null, title = null, content = '', titleManual = fal
   tabEl.addEventListener('mousedown', (e) => {
     if (e.target.closest('.tab-close')) return;
     activateTab(id);
+  });
+  tabEl.addEventListener('dblclick', (e) => {
+    if (e.target.closest('.tab-close')) return;
+    e.preventDefault();
+    beginRename(tab);
   });
   tabEl.querySelector('.tab-close').addEventListener('click', () => closeTab(id));
   tab.el = tabEl;
@@ -341,9 +352,70 @@ function isDirty(tab) {
 function updateTabChrome(tab) {
   const dirty = isDirty(tab);
   tab.el.classList.toggle('dirty', dirty);
-  tab.el.querySelector('.tab-title').textContent = tab.title;
+  // the title is an <input> mid-rename, so this may legitimately be absent
+  const titleEl = tab.el.querySelector('.tab-title');
+  if (titleEl) titleEl.textContent = tab.title;
   tab.el.title = tab.title;
   if (tab.id === state.activeId) document.title = tab.title + (dirty ? ' •' : '');
+}
+
+/* ---------------- Renaming ----------------
+   A document is named after its first line until you say otherwise.
+   Renaming pins the name, so writing on no longer rewrites it.       */
+
+function beginRename(tab) {
+  if (!tab || tab.renaming) return;
+  activateTab(tab.id);
+  tab.renaming = true;
+
+  const titleEl = tab.el.querySelector('.tab-title');
+  if (!titleEl) return;
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'tab-rename';
+  input.value = tab.title;
+  input.setAttribute('aria-label', 'Entry title');
+
+  const finish = (commit) => {
+    if (!tab.renaming) return;
+    tab.renaming = false;
+    const next = input.value.trim();
+    input.replaceWith(titleEl);          // put the label back first
+    if (commit && next && next !== tab.title) commitRename(tab, next);
+    else updateTabChrome(tab);
+    tab.editor.focus();
+  };
+
+  // keep the editor's own shortcuts out of the field
+  input.addEventListener('keydown', (e) => {
+    e.stopPropagation();
+    if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+    if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+  });
+  input.addEventListener('blur', () => finish(true));
+  input.addEventListener('mousedown', (e) => e.stopPropagation());
+  input.addEventListener('dblclick', (e) => e.stopPropagation());
+
+  titleEl.replaceWith(input);
+  input.focus();
+  input.select();
+}
+
+async function commitRename(tab, title) {
+  tab.title = title;
+  tab.titleManual = true;
+  updateTabChrome(tab);
+  rememberOpenTabs();
+  // A tab with no words yet has no row to rename; the name is held and
+  // travels with the document when it is first written.
+  if (!tab.docId) return;
+  try {
+    await Backend.renameDocument(tab.docId, title);
+  } catch (err) {
+    setSyncStatus('offline');
+    console.warn('rename failed, kept locally:', err.message);
+  }
 }
 
 /* ---------------- File commands ---------------- */
@@ -545,7 +617,7 @@ const goTo = {
     const input = $('#goto-input');
     input.value = '';
     const tab = activeTab();
-    if (tab) input.max = plainTextOf(tab.editor).split('\n').length;
+    if (tab) input.max = visualLineCount(tab.editor);
     input.focus();
   },
 
@@ -558,26 +630,23 @@ const goTo = {
   go() {
     const tab = activeTab();
     if (!tab) return;
-    const { text, parts } = collectText(tab.editor);
-    const lines = text.replace(/\n$/, '').split('\n');
-    const n = Math.max(1, Math.min(parseInt($('#goto-input').value, 10) || 1, lines.length));
-    let offset = 0;
-    for (let i = 0; i < n - 1; i++) offset += lines[i].length + 1;
-    // Find the text node at (or first after) the target offset
-    let target = parts.find((p) => offset >= p.start && offset <= p.start + p.node.nodeValue.length);
-    if (!target) target = parts.find((p) => p.start >= offset) || parts[parts.length - 1];
+    const editor = tab.editor;
+    const n = Math.max(1, Math.min(parseInt($('#goto-input').value, 10) || 1, visualLineCount(editor)));
     this.close();
-    if (!target) return;
-    const r = document.createRange();
-    const off = Math.max(0, Math.min(offset - target.start, target.node.nodeValue.length));
-    r.setStart(target.node, off);
-    r.collapse(true);
-    const sel = getSelection();
-    sel.removeAllRanges();
-    sel.addRange(r);
-    const rect = r.getBoundingClientRect();
-    const er = tab.editor.getBoundingClientRect();
-    tab.editor.scrollTop += rect.top - er.top - tab.editor.clientHeight / 3;
+
+    // Rows are the same ones Ln counts, so the number on screen is the
+    // number to type. Scroll first: a row can only be hit-tested on screen.
+    const { step, firstLineTop } = lineMetrics(editor);
+    const rowTop = firstLineTop + (n - 1) * step;
+    editor.scrollTop += rowTop - editor.getBoundingClientRect().top - editor.clientHeight / 3;
+
+    const { firstLineTop: top, contentLeft } = lineMetrics(editor);
+    const r = rangeAtPoint(contentLeft + 1, top + (n - 1) * step + step / 2);
+    if (r && editor.contains(r.startContainer)) {
+      const sel = getSelection();
+      sel.removeAllRanges();
+      sel.addRange(r);
+    }
     updateStatus();
   },
 };
@@ -587,6 +656,7 @@ const goTo = {
 function setZoom(zoom) {
   state.zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, zoom));
   $('#editor').style.fontSize = (BASE_FONT_PX * state.zoom) / 100 + 'px';
+  updateStatus();
   const el = $('#status-zoom');
   el.hidden = state.zoom === 100;
   el.textContent = state.zoom + '%';
@@ -601,6 +671,7 @@ function setFont(name) {
   const resolved = FONT_ALIASES[name] || name;
   state.font = FONTS.some((f) => f.name === resolved) ? resolved : DEFAULT_FONT;
   $('#editor').style.fontFamily = currentFontStack();
+  updateStatus();
   renderMenus();
   schedulePrefsSave();
 }
@@ -608,6 +679,16 @@ function setFont(name) {
 function setAlign(name) {
   state.align = ['left', 'right', 'justify'].includes(name) ? name : 'left';
   $('#editor').style.textAlign = state.align;
+  renderMenus();
+  schedulePrefsSave();
+}
+
+function setColumnWidth(name) {
+  state.columnWidth = COLUMN_WIDTHS.includes(name) ? name : DEFAULT_COLUMN;
+  // a data attribute rather than an inline style, so the phone media
+  // query can still override it
+  document.documentElement.dataset.col = state.columnWidth.toLowerCase();
+  updateStatus();
   renderMenus();
   schedulePrefsSave();
 }
@@ -624,30 +705,102 @@ function setTheme(name) {
 
 /* ---------------- Status bar ---------------- */
 
-// Plain text from the editor start up to the caret (for the Ln readout)
-function caretPreText(editor) {
+// Which line you are on as the eye sees it. A wrapped paragraph is many
+// lines, not one, so the number answers "where am I on the page" and moves
+// with the column width. Measured from laid-out geometry rather than
+// counted from the text, which is also cheaper than walking the document.
+
+function lineMetrics(editor) {
+  const cs = getComputedStyle(editor);
+  const box = editor.getBoundingClientRect();
+  return {
+    step: parseFloat(cs.lineHeight),
+    // The first line's top, taken from the content box. A range collapsed to
+    // the editor element itself reports a zero rect, so it cannot be the
+    // reference; the box always can.
+    firstLineTop: box.top + parseFloat(cs.paddingTop) - editor.scrollTop,
+    contentLeft: box.left + parseFloat(cs.paddingLeft),
+  };
+}
+
+function visualLineCount(editor) {
+  const { step, firstLineTop } = lineMetrics(editor);
+  const all = document.createRange();
+  all.selectNodeContents(editor);
+  const { bottom, height } = all.getBoundingClientRect();
+  if (!step || !height) return 1;
+  return Math.max(1, Math.round((bottom - firstLineTop) / step));
+}
+
+// The caret position nearest a point on screen. Browsers differ on which of
+// these two calls they have.
+function rangeAtPoint(x, y) {
+  if (document.caretPositionFromPoint) {
+    const pos = document.caretPositionFromPoint(x, y);
+    if (!pos) return null;
+    const r = document.createRange();
+    r.setStart(pos.offsetNode, pos.offset);
+    r.collapse(true);
+    return r;
+  }
+  return document.caretRangeFromPoint ? document.caretRangeFromPoint(x, y) : null;
+}
+
+// At the very start of a wrapped row a collapsed range still reports the end
+// of the row above. The character after the caret is always on the caret's
+// own row, so measure that when there is one.
+function caretRect(caret) {
+  const node = caret.endContainer;
+  if (caret.collapsed && node.nodeType === Node.TEXT_NODE && caret.endOffset < node.length) {
+    const next = document.createRange();
+    next.setStart(node, caret.endOffset);
+    next.setEnd(node, caret.endOffset + 1);
+    const r = next.getBoundingClientRect();
+    if (r.height) return r;
+  }
+  return caret.getBoundingClientRect();
+}
+
+function visualLine(editor) {
   const sel = getSelection();
   if (!sel || !sel.rangeCount) return null;
-  const range = sel.getRangeAt(0);
-  if (!editor.contains(range.endContainer)) return null;
-  const pre = document.createRange();
-  pre.selectNodeContents(editor);
-  pre.setEnd(range.endContainer, range.endOffset);
-  const div = document.createElement('div');
-  div.appendChild(pre.cloneContents());
-  return collectText(div).text;
+  const caret = sel.getRangeAt(0);
+  if (!editor.contains(caret.endContainer)) return null;
+
+  const rect = caretRect(caret);
+  let caretTop = rect && (rect.height || rect.top) ? rect.top : null;
+
+  // On a blank line the caret sits on the element rather than in a text
+  // node, and such a range reports a zero rect — fall back to the block's
+  // own box, which is that line.
+  if (caretTop === null) {
+    let node = caret.endContainer;
+    // A boundary on the editor itself points between blocks rather than at
+    // a line, so step into the block it refers to.
+    if (node === editor) {
+      const blocks = editor.children;
+      node = blocks[Math.min(caret.endOffset, blocks.length - 1)] || editor;
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) node = node.parentElement;
+    const box = node && node.getBoundingClientRect();
+    if (!box || !box.height) return null;
+    caretTop = box.top;
+  }
+
+  const { step, firstLineTop } = lineMetrics(editor);
+  if (!step) return null;
+
+  // A text caret sits below its line box by the half-leading, a block's box
+  // sits exactly on it. A quarter-line cushion absorbs both, and sub-pixel
+  // layout, without ever reaching the next row.
+  return Math.max(1, Math.floor((caretTop - firstLineTop + step * 0.25) / step) + 1);
 }
 
 function updateStatus() {
   const tab = activeTab();
   if (!tab) return;
   const text = plainTextOf(tab.editor);
-  const pre = caretPreText(tab.editor);
-  let line = 1;
-  if (pre !== null) {
-    line = (pre.replace(/\n$/, '').match(/\n/g) || []).length + 1;
-  }
-  $('#status-pos').textContent = `Ln ${line}`;
+  $('#status-pos').textContent = `Ln ${visualLine(tab.editor) ?? 1}`;
   const words = (text.match(/\S+/g) || []).length;
   $('#status-words').textContent =
     words.toLocaleString() + (words === 1 ? ' word' : ' words');
@@ -763,6 +916,7 @@ async function retryPending() {
   if (Object.keys(pending).length && syncStatus === 'offline') setSyncStatus('idle');
 }
 
+window.addEventListener('resize', updateStatus);
 window.addEventListener('online', retryPending);
 setInterval(retryPending, 30000);
 
@@ -853,6 +1007,7 @@ function schedulePrefsSave() {
       theme: state.theme,
       zoom: state.zoom,
       align: state.align,
+      column_width: state.columnWidth,
     }).catch(() => { /* preferences are not worth interrupting writing for */ });
   }, 600);
 }
@@ -887,6 +1042,8 @@ function doCommand(name, arg) {
     zoomReset: () => setZoom(100),
     setFont: () => setFont(arg),
     setAlign: () => setAlign(arg),
+    setColumnWidth: () => setColumnWidth(arg),
+    renameEntry: () => beginRename(activeTab()),
     setTheme: () => setTheme(arg),
   };
   commands[name]?.();
@@ -900,8 +1057,8 @@ function menuDefinition() {
       label: 'File',
       items: [
         { label: 'New Entry', cmd: 'newTab', key: '⌘T' },
-        { label: 'Library', cmd: 'library', key: '⌘O' },
         { sep: true },
+        { label: 'Rename Entry…', cmd: 'renameEntry' },
         {
           label: 'Export',
           submenu: [
@@ -947,6 +1104,15 @@ function menuDefinition() {
             { label: 'Justify', cmd: 'setAlign', arg: 'justify', checked: state.align === 'justify' },
           ],
         },
+        {
+          label: 'Column Width',
+          submenu: COLUMN_WIDTHS.map((w) => ({
+            label: w,
+            cmd: 'setColumnWidth',
+            arg: w,
+            checked: state.columnWidth === w,
+          })),
+        },
       ],
     },
     {
@@ -978,9 +1144,34 @@ function menuDefinition() {
   ];
 }
 
+// Eduardo's drawing — an open book.
+// Source of truth: prototype/open-book.svg
+const LIBRARY_ICON =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"' +
+  ' stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">' +
+  '<path d="M12 6.5C10 5 6.5 4.5 3 5v13.5c3.5-.5 7 0 9 1.5"/>' +
+  '<path d="M12 6.5c2-1.5 5.5-2 9-1.5v13.5c-3.5-.5-7 0-9 1.5"/>' +
+  '<path d="M12 6.5V20"/>' +
+  '</svg>';
+
 function renderMenus() {
   const bar = $('#menubar');
   bar.innerHTML = '';
+
+  // The library sits to the left of the menus, as its own destination
+  // rather than an item buried in File.
+  const library = document.createElement('button');
+  library.type = 'button';
+  library.className = 'menubar-icon';
+  library.innerHTML = LIBRARY_ICON;
+  library.title = `Library (${shortcutLabel('⌘O')})`;
+  library.setAttribute('aria-label', 'Library');
+  library.addEventListener('click', (e) => {
+    e.stopPropagation();
+    closeAllMenus();
+    doCommand('library');
+  });
+  bar.appendChild(library);
   for (const menu of menuDefinition()) {
     const wrap = document.createElement('div');
     wrap.className = 'menu';
@@ -1181,6 +1372,7 @@ async function restoreWorkspace() {
       state.font = prefs.font || DEFAULT_FONT;
       state.zoom = prefs.zoom || 100;
       state.align = prefs.align || 'left';
+      state.columnWidth = prefs.column_width || DEFAULT_COLUMN;
       state.theme = prefs.theme || null;
     }
   } catch { /* offline — fall back to defaults */ }
@@ -1189,6 +1381,7 @@ async function restoreWorkspace() {
   setFont(state.font);
   setZoom(state.zoom);
   setAlign(state.align);
+  setColumnWidth(state.columnWidth);
   renderMenus();
 
   try {

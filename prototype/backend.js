@@ -127,7 +127,7 @@ const Backend = (() => {
   async function loadPreferences() {
     const { data, error } = await client
       .from('preferences')
-      .select('font, theme, zoom, align, show_excerpts')
+      .select('font, theme, zoom, align, show_excerpts, column_width')
       .maybeSingle();
     if (error) throw error;
     return data;
