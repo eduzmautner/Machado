@@ -220,7 +220,7 @@ body {
 }
 
 /* Quieter here than on the sign-in page — the entries are the subject. */
-.topbar .wordmark { height: 21px; }
+.topbar .wordmark { height: 20px; }
 
 .topbar-actions {
   display: flex;
